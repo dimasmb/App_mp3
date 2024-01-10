@@ -238,6 +238,7 @@ class Ui_MiMP3(object):
         self.verticalLayout.addWidget(self.line)
         self.volumeSlider = QtWidgets.QSlider(self.centralwidget)
         self.volumeSlider.setMaximum(32)
+        self.volumeSlider.setProperty("value", 32)
         self.volumeSlider.setOrientation(QtCore.Qt.Horizontal)
         self.volumeSlider.setObjectName("volumeSlider")
         self.verticalLayout.addWidget(self.volumeSlider)
