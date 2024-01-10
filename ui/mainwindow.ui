@@ -217,6 +217,11 @@
             <height>100</height>
            </size>
           </property>
+          <property name="font">
+           <font>
+            <pointsize>20</pointsize>
+           </font>
+          </property>
           <property name="styleSheet">
            <string notr="true">QPushButton {
     color: #333;
@@ -270,6 +275,11 @@ QPushButton:pressed {
             <height>100</height>
            </size>
           </property>
+          <property name="font">
+           <font>
+            <pointsize>46</pointsize>
+           </font>
+          </property>
           <property name="styleSheet">
            <string notr="true">QPushButton {
     color: #333;
@@ -299,7 +309,7 @@ QPushButton:pressed {
     }</string>
           </property>
           <property name="text">
-           <string>PLAY</string>
+           <string>▶</string>
           </property>
          </widget>
         </item>
@@ -322,6 +332,11 @@ QPushButton:pressed {
             <width>100</width>
             <height>100</height>
            </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>20</pointsize>
+           </font>
           </property>
           <property name="styleSheet">
            <string notr="true">QPushButton {
@@ -471,7 +486,6 @@ QPushButton:pressed {
      <string>&amp;Menu</string>
     </property>
     <addaction name="actionClean"/>
-    <addaction name="actionAgregar_todos"/>
    </widget>
    <addaction name="menu_Menu"/>
   </widget>

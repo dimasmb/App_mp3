@@ -1,7 +1,7 @@
 # PyQt5 modules
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtCore import QTimer, Qt, QItemSelectionModel
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QFont, QColor, QBrush
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QFont, QColor, QBrush, QIcon, QPixmap
 
 # Project modules
 from py.Ui_mainwindow import Ui_MiMP3
@@ -32,7 +32,8 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         self.font_queue = QFont()   #default font
         # self.list_model = QStandardItemModel()
         # self.listView.setModel(self.list_model)
-
+        # self.Btn_play.setIcon(QIcon('ui/play.png'))
+        # self.Btn_play.setText('⏸')
         self.Btn_buscar.clicked.connect(self.look4ports)
         self.Btn_conectar.clicked.connect(self.open_port)
         self.Btn_desconectar.clicked.connect(self.close_port)
@@ -53,7 +54,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.check_endofsong)
-        self.timer.start(500)
         # self.build_tree()
         self.look4ports()
 
@@ -133,26 +133,31 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         rootNode = self.tree_model.invisibleRootItem()
         
         datos_recibidos = ""
-        while True:
-            # Lee un byte del puerto serial
-            byte_recibido = self.ser.read()
+        self.ser.timeout = 5.0
+        try:
+            while True:
+                # Lee un byte del puerto serial
+                byte_recibido = self.ser.read()
+                
+                # Decodifica el byte a una cadena
+                caracter_recibido = byte_recibido.decode('Ascii')
+                
+                # Agrega el caracter recibido a los datos acumulados
+                datos_recibidos += caracter_recibido
+                
+                # Verifica si se ha alcanzado el final del archivo (EOF)
+                if caracter_recibido == '\x1A':
+                    break
+                
+            self.procesar_cadena(datos_recibidos[:-2])
+            for padre in self.padres:
+                rootNode.appendRow(padre)
             
-            # Decodifica el byte a una cadena
-            caracter_recibido = byte_recibido.decode('Ascii')
-            
-            # Agrega el caracter recibido a los datos acumulados
-            datos_recibidos += caracter_recibido
-            
-            # Verifica si se ha alcanzado el final del archivo (EOF)
-            if caracter_recibido == '\x1A':
-                break
-            
-        self.procesar_cadena(datos_recibidos[:-2])
-        for padre in self.padres:
-            rootNode.appendRow(padre)
-
-        self.treeView.setModel(self.tree_model)
-
+            self.timer.start(500)
+            self.treeView.setModel(self.tree_model)
+        except serial.SerialTimeoutException:
+            self.statusBar.showMessage('RX Timeout. Check connection to MP3')
+        
     def removeSel(self):
         listItems=self.listWidget.selectedItems()
         if not listItems: return        
@@ -165,45 +170,48 @@ class MiMP3(QMainWindow, Ui_MiMP3):
 
         # Iterar entre los elementos del nivel especificado
         for row in range(model.rowCount(root_index)):
+            print(row)
             parent_index = model.index(row, 0, root_index)  # Obtener el índice del elemento padre
             self.treeView.setExpanded(parent_index, True)  # Expandir el elemento padre
             child_index = model.index(0, 0, parent_index)  # Obtener el índice del primer hijo
 
             # Seleccionar todos los hijos del nivel especificado
             for child_row in range(model.rowCount(child_index)):
+                print('child: {}'.format(child_row))
                 child_item_index = model.index(child_row, 0, child_index)
                 self.treeView.selectionModel().select(child_item_index, QItemSelectionModel.Select)
 
     def play_clicked(self):
-        if self.playing and not self.paused:
-            #'\pause'
-            self.ser.write(b'A') #pause
-            self.playing = True
-            self.statusBar.showMessage('Paused')
-            self.Btn_play.setText('PLAY')
-            self.playing = False
-            self.paused = True
-        elif not self.playing and not self.paused:
-            #'\play'
-            text = self.listWidget.item(self.playing_index).text().split('\t')
-            to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A' #play song
-            self.ser.write(to_send.encode('utf-8'))
-            self.statusBar.showMessage('Playing')
-            self.Btn_play.setText('PAUSE')
-            self.playing = True
-            self.paused = False
-            self.actualizarTodo()
-            self.label_song_name.setText(text[0])
-        elif not self.playing and self.paused:
-            to_send = "R"   #resume
-            self.ser.write(to_send.encode('utf-8'))
-            self.statusBar.showMessage('Playing')
-            self.Btn_play.setText('PAUSE')
-            self.playing = True
-            self.paused = False
-            
-        # for i in range(self.listWidget.count()):
-        #     print(self.listWidget.item(i).text())
+        if self.ser != None:
+            if self.listWidget.count() > 0:
+                if self.playing and not self.paused:
+                    #'\pause'
+                    self.ser.write(b'A') #pause
+                    self.playing = True
+                    self.statusBar.showMessage('Paused')
+                    self.Btn_play.setText('▶')
+                    self.playing = False
+                    self.paused = True
+                elif not self.playing and not self.paused:
+                    #'\play'
+                    text = self.listWidget.item(self.playing_index).text().split('\t')
+                    to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A' #play song
+                    self.ser.write(to_send.encode('utf-8'))
+                    self.statusBar.showMessage('Playing')
+                    self.Btn_play.setText('ll')
+                    self.playing = True
+                    self.paused = False
+                    self.actualizarTodo()
+                    self.label_song_name.setText(text[0])
+                elif not self.playing and self.paused:
+                    to_send = "R"   #resume
+                    self.ser.write(to_send.encode('utf-8'))
+                    self.statusBar.showMessage('Playing')
+                    self.Btn_play.setText('ll')
+                    self.playing = True
+                    self.paused = False
+            else:
+                self.statusBar.showMessage('No hay canciones para reproducir')
 
     def previous(self):
         self.onRowsMoved()
@@ -214,8 +222,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.ser.write(to_send.encode('utf-8'))
             self.actualizarTodo()
             self.label_song_name.setText(text[0])
-        #anterior
-        pass
     
     def agregar(self):
         for index in self.treeView.selectedIndexes():
@@ -224,19 +230,18 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 self.listWidget.addItem(text)
 
     def next(self):
-        self.onRowsMoved()
-        if self.playing_index < (self.listWidget.count()-1):
-            self.playing_index += 1
-        else:
-            self.playing_index = 0
-            # print(self.playing_index)
-        text = self.listWidget.item(self.playing_index).text().split('\t')
-        to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A'
-        self.ser.write(to_send.encode('utf-8'))
-        self.actualizarTodo()
-        self.label_song_name.setText(text[0])
-        #siguiente
-        pass
+        if self.ser != None:
+            self.onRowsMoved()
+            if self.playing_index < (self.listWidget.count()-1):
+                self.playing_index += 1
+            else:
+                self.playing_index = 0
+                # print(self.playing_index)
+            text = self.listWidget.item(self.playing_index).text().split('\t')
+            to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A'
+            self.ser.write(to_send.encode('utf-8'))
+            self.actualizarTodo()
+            self.label_song_name.setText(text[0])
 
     def actualizarTodo(self):
         for item in range(self.listWidget.count()):
@@ -258,28 +263,29 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 self.playing_index = item
 
     def normal_toggled(self, selected):
-        if selected:
+        if selected and self.ser != None:
             self.ser.write(b'N')
              
     def urban_toggled(self, selected):
-        if selected:
+        if selected and self.ser != None:
             self.ser.write(b'U')
     
     def clasical_toggled(self, selected):
-        if selected:
+        if selected and self.ser != None:
             self.ser.write(b'O')
     
     def rock_toggled(self, selected):
-        if selected:
+        if selected and self.ser != None:
             self.ser.write(b'K')
 
     def volume_set(self):
-        val = self.volumeSlider.value()
-        if val<10:
-            to_send = "V0" + str(val)
-        else:
-            to_send = "V" + str(val)
-        self.ser.write(to_send.encode('utf-8'))
+        if self.ser != None:
+            val = self.volumeSlider.value()
+            if val<10:
+                to_send = "V0" + str(val)
+            else:
+                to_send = "V" + str(val)
+            self.ser.write(to_send.encode('utf-8'))
 
     def check_endofsong(self):
         if self.ser != None:
@@ -288,7 +294,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             if a == b'E':
                 self.next()
             self.ser.timeout = 0
-
 
     def closeEvent(self, event):
         if self.ser != None:

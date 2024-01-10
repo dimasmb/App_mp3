@@ -113,6 +113,9 @@ class Ui_MiMP3(object):
         self.Btn_prev.setSizePolicy(sizePolicy)
         self.Btn_prev.setMinimumSize(QtCore.QSize(100, 100))
         self.Btn_prev.setMaximumSize(QtCore.QSize(100, 100))
+        font = QtGui.QFont()
+        font.setPointSize(20)
+        self.Btn_prev.setFont(font)
         self.Btn_prev.setStyleSheet("QPushButton {\n"
 "    color: #333;\n"
 "    border: 2px solid #555;\n"
@@ -149,6 +152,9 @@ class Ui_MiMP3(object):
         self.Btn_play.setSizePolicy(sizePolicy)
         self.Btn_play.setMinimumSize(QtCore.QSize(100, 100))
         self.Btn_play.setMaximumSize(QtCore.QSize(100, 100))
+        font = QtGui.QFont()
+        font.setPointSize(46)
+        self.Btn_play.setFont(font)
         self.Btn_play.setStyleSheet("QPushButton {\n"
 "    color: #333;\n"
 "    border: 2px solid #555;\n"
@@ -185,6 +191,9 @@ class Ui_MiMP3(object):
         self.Btn_next.setSizePolicy(sizePolicy)
         self.Btn_next.setMinimumSize(QtCore.QSize(100, 100))
         self.Btn_next.setMaximumSize(QtCore.QSize(100, 100))
+        font = QtGui.QFont()
+        font.setPointSize(20)
+        self.Btn_next.setFont(font)
         self.Btn_next.setStyleSheet("QPushButton {\n"
 "    color: #333;\n"
 "    border: 2px solid #555;\n"
@@ -275,7 +284,6 @@ class Ui_MiMP3(object):
         self.actionAgregar_todos = QtWidgets.QAction(MiMP3)
         self.actionAgregar_todos.setObjectName("actionAgregar_todos")
         self.menu_Menu.addAction(self.actionClean)
-        self.menu_Menu.addAction(self.actionAgregar_todos)
         self.menuBar.addAction(self.menu_Menu.menuAction())
 
         self.retranslateUi(MiMP3)
@@ -293,7 +301,7 @@ class Ui_MiMP3(object):
         self.label_3.setText(_translate("MiMP3", "Lista de reproducción:"))
         self.Btn_eliminar.setText(_translate("MiMP3", "Eliminar seleccionados"))
         self.Btn_prev.setText(_translate("MiMP3", "<"))
-        self.Btn_play.setText(_translate("MiMP3", "PLAY"))
+        self.Btn_play.setText(_translate("MiMP3", "▶"))
         self.Btn_next.setText(_translate("MiMP3", ">"))
         self.label.setText(_translate("MiMP3", "Reproduciendo: "))
         self.label_song_name.setText(_translate("MiMP3", "--"))
