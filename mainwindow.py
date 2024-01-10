@@ -43,6 +43,17 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         self.Btn_eliminar.clicked.connect(self.removeSel)
         self.actionClean.triggered.connect(self.listWidget.clear)
         self.actionAgregar_todos.triggered.connect(self.addAll)
+
+        self.radioButton_normal.toggled.connect(self.normal_toggled)
+        self.radioButton_urban.toggled.connect(self.urban_toggled)
+        self.radioButton_clasical.toggled.connect(self.clasical_toggled)
+        self.radioButton_rock.toggled.connect(self.rock_toggled)
+
+        self.volumeSlider.sliderReleased.connect(self.volume_set)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.check_endofsong)
+        self.timer.start(500)
         # self.build_tree()
         self.look4ports()
 
@@ -62,7 +73,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 comx = self.comboBox_COMports.currentText()
                 comx = comx.split()
                 try:
-                    self.ser = serial.Serial(comx[0], timeout=0, baudrate=115200)
+                    self.ser = serial.Serial(comx[0], timeout=0, baudrate=9600)
                     self.serial_opened = True
                     self.statusBar.showMessage('Puerto {} abierto'.format(comx[0]))
                 except serial.SerialException:
@@ -70,7 +81,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             else:
                 self.statusBar.showMessage('No hay puertos para abrir')
             if self.serial_opened:
-                self.ser.write(b'\connect')
+                self.ser.write(b'C')
                 self.build_tree()
         else: 
             self.statusBar.showMessage('Desconectese del puerto actual para abrir otro')
@@ -86,19 +97,38 @@ class MiMP3(QMainWindow, Ui_MiMP3):
     def procesar_cadena(self, cadena):
         self.padres.clear()
         self.hijos.clear()
+        parent_name = []
         lineas = cadena.split('\n')
-        
+        print(lineas)
         for linea in lineas:
-            elementos = linea.split('.')
+            elementos = linea[1:].split('/')
             padre = elementos[0]
-            hijos = elementos[1:]
-            
-            self.padres.append(QStandardItem(padre))
+            hijo = elementos[1][:-4]
 
-            for hijo in hijos:
+            i=0
+            father_index=-1
+            if len(parent_name)>0:
+                for i in range(len(parent_name)):
+                    if padre == parent_name[i]:
+                        father_index=i
+                        break
+                if(father_index!=-1):
+                    # print('Repetido: {} con hijo: {}'.format(padre, hijo))
+                    self.hijos.append(QStandardItem(hijo))
+                    self.padres[i].appendRow(self.hijos[-1])
+                else:
+                    # print('creo: {} con hijo: {}'.format(padre, hijo))
+                    self.padres.append(QStandardItem(padre))
+                    parent_name.append(padre)
+                    self.hijos.append(QStandardItem(hijo))
+                    self.padres[-1].appendRow(self.hijos[-1])
+            else:
+                # print('Primera vez: {}'.format(padre))
+                self.padres.append(QStandardItem(padre))
+                parent_name.append(padre)
                 self.hijos.append(QStandardItem(hijo))
                 self.padres[-1].appendRow(self.hijos[-1])
-
+            
     def build_tree(self):
         rootNode = self.tree_model.invisibleRootItem()
         
@@ -117,21 +147,9 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             if caracter_recibido == '\x1A':
                 break
             
-        self.procesar_cadena(datos_recibidos)
+        self.procesar_cadena(datos_recibidos[:-2])
         for padre in self.padres:
             rootNode.appendRow(padre)
-
-        # padre = QStandardItem("papa")
-        # hijo =QStandardItem("Dimas")
-        # hijo1 =QStandardItem("Dimas1")
-        # hijo2 =QStandardItem("Dimas2")
-        # hijo3 =QStandardItem("Dimas3")
-        # padre.appendRows([hijo, hijo1, hijo2])
-        # madre = QStandardItem("mama")
-        # madre.appendRow(hijo3)
-
-        # rootNode.appendRow(padre)
-        # rootNode.appendRow(madre)
 
         self.treeView.setModel(self.tree_model)
 
@@ -159,7 +177,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
     def play_clicked(self):
         if self.playing and not self.paused:
             #'\pause'
-            self.ser.write(b'\pause')
+            self.ser.write(b'A') #pause
             self.playing = True
             self.statusBar.showMessage('Paused')
             self.Btn_play.setText('PLAY')
@@ -168,7 +186,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         elif not self.playing and not self.paused:
             #'\play'
             text = self.listWidget.item(self.playing_index).text().split('\t')
-            to_send = "\play\\" + text[1][1:-1] + '\\' + text[0]
+            to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A' #play song
             self.ser.write(to_send.encode('utf-8'))
             self.statusBar.showMessage('Playing')
             self.Btn_play.setText('PAUSE')
@@ -177,7 +195,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.actualizarTodo()
             self.label_song_name.setText(text[0])
         elif not self.playing and self.paused:
-            to_send = "\\resume"
+            to_send = "R"   #resume
             self.ser.write(to_send.encode('utf-8'))
             self.statusBar.showMessage('Playing')
             self.Btn_play.setText('PAUSE')
@@ -192,9 +210,10 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         if self.playing_index > 0:
             self.playing_index -= 1
             text = self.listWidget.item(self.playing_index).text().split('\t')
-            to_send = "\play\\" + text[1][1:-1] + '\\' + text[0]
+            to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A'
             self.ser.write(to_send.encode('utf-8'))
             self.actualizarTodo()
+            self.label_song_name.setText(text[0])
         #anterior
         pass
     
@@ -212,9 +231,10 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.playing_index = 0
             # print(self.playing_index)
         text = self.listWidget.item(self.playing_index).text().split('\t')
-        to_send = "\play\\" + text[1][1:-1] + '\\' + text[0]
+        to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A'
         self.ser.write(to_send.encode('utf-8'))
         self.actualizarTodo()
+        self.label_song_name.setText(text[0])
         #siguiente
         pass
 
@@ -237,3 +257,40 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             if self.listWidget.item(item).text()[0] == "\u2192":
                 self.playing_index = item
 
+    def normal_toggled(self, selected):
+        if selected:
+            self.ser.write(b'N')
+             
+    def urban_toggled(self, selected):
+        if selected:
+            self.ser.write(b'U')
+    
+    def clasical_toggled(self, selected):
+        if selected:
+            self.ser.write(b'O')
+    
+    def rock_toggled(self, selected):
+        if selected:
+            self.ser.write(b'K')
+
+    def volume_set(self):
+        val = self.volumeSlider.value()
+        if val<10:
+            to_send = "V0" + str(val)
+        else:
+            to_send = "V" + str(val)
+        self.ser.write(to_send.encode('utf-8'))
+
+    def check_endofsong(self):
+        if self.ser != None:
+            self.ser.timeout = 0.05
+            a = self.ser.read(1)
+            if a == b'E':
+                self.next()
+            self.ser.timeout = 0
+
+
+    def closeEvent(self, event):
+        if self.ser != None:
+            self.ser.write(b'X')
+            self.close_port()
