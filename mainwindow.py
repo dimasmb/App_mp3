@@ -30,10 +30,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         self.font_playing.setBold(True)
 
         self.font_queue = QFont()   #default font
-        # self.list_model = QStandardItemModel()
-        # self.listView.setModel(self.list_model)
-        # self.Btn_play.setIcon(QIcon('ui/play.png'))
-        # self.Btn_play.setText('⏸')
         self.Btn_buscar.clicked.connect(self.look4ports)
         self.Btn_conectar.clicked.connect(self.open_port)
         self.Btn_desconectar.clicked.connect(self.close_port)
@@ -54,7 +50,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.check_endofsong)
-        # self.build_tree()
         self.look4ports()
 
     def look4ports(self):
@@ -87,6 +82,9 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.statusBar.showMessage('Desconectese del puerto actual para abrir otro')
 
     def close_port(self):
+        self.tree_model.clear()
+        self.listWidget.clear()
+        self.label_song_name.setText("--")
         if self.serial_opened:
             self.ser.close()
             self.statusBar.showMessage('Puerto cerrado')
@@ -99,7 +97,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
         self.hijos.clear()
         parent_name = []
         lineas = cadena.split('\n')
-        print(lineas)
         for linea in lineas:
             elementos = linea[1:].split('/')
             padre = elementos[0]
@@ -113,17 +110,14 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                         father_index=i
                         break
                 if(father_index!=-1):
-                    # print('Repetido: {} con hijo: {}'.format(padre, hijo))
                     self.hijos.append(QStandardItem(hijo))
                     self.padres[i].appendRow(self.hijos[-1])
                 else:
-                    # print('creo: {} con hijo: {}'.format(padre, hijo))
                     self.padres.append(QStandardItem(padre))
                     parent_name.append(padre)
                     self.hijos.append(QStandardItem(hijo))
                     self.padres[-1].appendRow(self.hijos[-1])
             else:
-                # print('Primera vez: {}'.format(padre))
                 self.padres.append(QStandardItem(padre))
                 parent_name.append(padre)
                 self.hijos.append(QStandardItem(hijo))
@@ -170,19 +164,17 @@ class MiMP3(QMainWindow, Ui_MiMP3):
 
         # Iterar entre los elementos del nivel especificado
         for row in range(model.rowCount(root_index)):
-            print(row)
             parent_index = model.index(row, 0, root_index)  # Obtener el índice del elemento padre
             self.treeView.setExpanded(parent_index, True)  # Expandir el elemento padre
             child_index = model.index(0, 0, parent_index)  # Obtener el índice del primer hijo
 
             # Seleccionar todos los hijos del nivel especificado
             for child_row in range(model.rowCount(child_index)):
-                print('child: {}'.format(child_row))
                 child_item_index = model.index(child_row, 0, child_index)
                 self.treeView.selectionModel().select(child_item_index, QItemSelectionModel.Select)
 
     def play_clicked(self):
-        if self.ser != None:
+        if self.serial_opened:
             if self.listWidget.count() > 0:
                 if self.playing and not self.paused:
                     #'\pause'
@@ -230,13 +222,12 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 self.listWidget.addItem(text)
 
     def next(self):
-        if self.ser != None:
+        if self.serial_opened:
             self.onRowsMoved()
             if self.playing_index < (self.listWidget.count()-1):
                 self.playing_index += 1
             else:
                 self.playing_index = 0
-                # print(self.playing_index)
             text = self.listWidget.item(self.playing_index).text().split('\t')
             to_send = "L/" + text[1][1:-1] + '/' + text[0] + ".MP3" + '\x1A'
             self.ser.write(to_send.encode('utf-8'))
@@ -246,8 +237,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
     def actualizarTodo(self):
         for item in range(self.listWidget.count()):
             if item == self.playing_index and self.listWidget.item(item).text()[0] != "\u2192":
-                # print(item)
-                # print(">" + self.listWidget.item(item).text())
                 self.listWidget.item(item).setText("\u2192" + self.listWidget.item(item).text())
                 self.listWidget.item(item).setFont(self.font_playing)
                 self.listWidget.item(item).setBackground(QColor("lightblue"))
@@ -263,23 +252,23 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 self.playing_index = item
 
     def normal_toggled(self, selected):
-        if selected and self.ser != None:
+        if selected and self.serial_opened:
             self.ser.write(b'N')
              
     def urban_toggled(self, selected):
-        if selected and self.ser != None:
+        if selected and self.serial_opened:
             self.ser.write(b'U')
     
     def clasical_toggled(self, selected):
-        if selected and self.ser != None:
+        if selected and self.serial_opened:
             self.ser.write(b'O')
     
     def rock_toggled(self, selected):
-        if selected and self.ser != None:
+        if selected and self.serial_opened:
             self.ser.write(b'K')
 
     def volume_set(self):
-        if self.ser != None:
+        if self.serial_opened:
             val = self.volumeSlider.value()
             if val<10:
                 to_send = "V0" + str(val)
@@ -288,7 +277,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.ser.write(to_send.encode('utf-8'))
 
     def check_endofsong(self):
-        if self.ser != None:
+        if self.serial_opened:
             self.ser.timeout = 0.05
             a = self.ser.read(1)
             if a == b'E':
@@ -296,6 +285,6 @@ class MiMP3(QMainWindow, Ui_MiMP3):
             self.ser.timeout = 0
 
     def closeEvent(self, event):
-        if self.ser != None:
+        if self.serial_opened:
             self.ser.write(b'X')
             self.close_port()
