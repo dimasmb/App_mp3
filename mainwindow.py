@@ -68,7 +68,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 comx = self.comboBox_COMports.currentText()
                 comx = comx.split()
                 try:
-                    self.ser = serial.Serial(comx[0], timeout=0, baudrate=9600)
+                    self.ser = serial.Serial(comx[0], timeout=0, baudrate=115200, parity=serial.PARITY_EVEN)
                     self.serial_opened = True
                     self.statusBar.showMessage('Puerto {} abierto'.format(comx[0]))
                 except serial.SerialException:
