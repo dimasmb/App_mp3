@@ -11,6 +11,7 @@ import serial
 from serial.tools import list_ports
 import numpy as np
 
+from collections import Counter
 
 class MiMP3(QMainWindow, Ui_MiMP3):
 
@@ -75,7 +76,7 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                     self.statusBar.showMessage('No se pudo abrir el puerto')
             else:
                 self.statusBar.showMessage('No hay puertos para abrir')
-            if self.serial_opened:
+            if self.serial_opened:           
                 self.ser.write(b'C')
                 self.build_tree()
         else: 
@@ -126,7 +127,9 @@ class MiMP3(QMainWindow, Ui_MiMP3):
     def build_tree(self):
         rootNode = self.tree_model.invisibleRootItem()
         
-        datos_recibidos = ""
+        datos_recibidos1 = ""
+        datos_recibidos2 = ""
+        datos_recibidos3 = ""
         self.ser.timeout = 5.0
         try:
             while True:
@@ -134,15 +137,59 @@ class MiMP3(QMainWindow, Ui_MiMP3):
                 byte_recibido = self.ser.read()
                 
                 # Decodifica el byte a una cadena
-                caracter_recibido = byte_recibido.decode('Ascii')
+                try:
+                    caracter_recibido = byte_recibido.decode('Ascii')
+                except:
+                    caracter_recibido = ' '
                 
                 # Agrega el caracter recibido a los datos acumulados
-                datos_recibidos += caracter_recibido
+                datos_recibidos1 += caracter_recibido
                 
                 # Verifica si se ha alcanzado el final del archivo (EOF)
                 if caracter_recibido == '\x1A':
                     break
+
+            while True:
+                # Lee un byte del puerto serial
+                byte_recibido = self.ser.read()
                 
+                # Decodifica el byte a una cadena
+                try:
+                    caracter_recibido = byte_recibido.decode('Ascii')
+                except:
+                    caracter_recibido = ' '
+                
+                # Agrega el caracter recibido a los datos acumulados
+                datos_recibidos2 += caracter_recibido
+                
+                # Verifica si se ha alcanzado el final del archivo (EOF)
+                if caracter_recibido == '\x1A':
+                    break
+
+            while True:
+                # Lee un byte del puerto serial
+                byte_recibido = self.ser.read()
+                
+                # Decodifica el byte a una cadena
+                try:
+                    caracter_recibido = byte_recibido.decode('Ascii')
+                except:
+                    caracter_recibido = ' '
+                
+                # Agrega el caracter recibido a los datos acumulados
+                datos_recibidos3 += caracter_recibido
+                
+                # Verifica si se ha alcanzado el final del archivo (EOF)
+                if caracter_recibido == '\x1A':
+                    break
+            
+            datos_recibidos = "" 
+            for i in range(len(datos_recibidos1)):
+                datos_recibidos+= Counter([datos_recibidos1[i],datos_recibidos2[i],datos_recibidos3[i]]).most_common(1)[0][0]
+            
+
+
+
             self.procesar_cadena(datos_recibidos[:-2])
             for padre in self.padres:
                 rootNode.appendRow(padre)
